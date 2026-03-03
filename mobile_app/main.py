@@ -7,20 +7,9 @@ from kivy.uix.checkbox import CheckBox
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.progressbar import ProgressBar
 from kivy.clock import Clock
-from kivy.utils import platform
 import requests
 import json
 from datetime import datetime
-import os
-
-if platform == 'android':
-    from android.permissions import request_permissions, Permission
-    request_permissions([
-        Permission.INTERNET,
-        Permission.WRITE_EXTERNAL_STORAGE,
-        Permission.READ_EXTERNAL_STORAGE,
-        Permission.ACCESS_NETWORK_STATE
-    ])
 
 
 class GoogleMapsScraper(BoxLayout):
@@ -237,7 +226,6 @@ class GoogleMapsScraper(BoxLayout):
     
     def export_to_excel(self, instance):
         try:
-            # Send data to backend API for Excel export
             response = requests.post(
                 f'{self.server_input.text.strip()}/api/export-excel',
                 json={
@@ -250,38 +238,9 @@ class GoogleMapsScraper(BoxLayout):
             
             if response.status_code == 200:
                 result = response.json()
-                excel_hex = result.get('file')
-                
-                if excel_hex:
-                    # Convert hex back to binary
-                    excel_bytes = bytes.fromhex(excel_hex)
-                    
-                    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-                    
-                    if platform == 'android':
-                        try:
-                            from jnius import autoclass
-                            Environment = autoclass('android.os.Environment')
-                            downloads_path = Environment.getExternalStoragePublicDirectory(
-                                Environment.DIRECTORY_DOWNLOADS
-                            ).getAbsolutePath()
-                        except Exception:
-                            downloads_path = os.path.expanduser('~/Downloads')
-                    else:
-                        downloads_path = os.path.expanduser('~/Downloads')
-                    
-                    filename = f'maps_data_{timestamp}.xlsx'
-                    filepath = os.path.join(downloads_path, filename)
-                    
-                    with open(filepath, 'wb') as f:
-                        f.write(excel_bytes)
-                    
-                    self.status_label.text = f'Saved: {filename}'
-                    self.status_label.color = (0.2, 0.8, 0.4, 1)
-                    self.results_label.text = f'Exported: {result.get("rows", 0)} rows'
-                else:
-                    self.status_label.text = 'Export error: No file returned'
-                    self.status_label.color = (1, 0.3, 0.3, 1)
+                row_count = result.get('rows', len(self.collected_data))
+                self.status_label.text = f'Excel created: {row_count} rows'
+                self.status_label.color = (0.2, 0.8, 0.4, 1)
             else:
                 self.status_label.text = f'Export error: {response.status_code}'
                 self.status_label.color = (1, 0.3, 0.3, 1)
