@@ -207,5 +207,41 @@ async def scrape_maps(request: ScrapeRequest):
             driver.quit()
 
 
+@app.post("/api/export-excel")
+async def export_to_excel(request: dict):
+    try:
+        import pandas as pd
+        from io import BytesIO
+        
+        data = request.get('data', [])
+        remove_duplicates = request.get('remove_duplicates', False)
+        remove_without_phone = request.get('remove_without_phone', False)
+        
+        df = pd.DataFrame(data)
+        
+        # Apply filters
+        if remove_duplicates and 'place_id' in df.columns:
+            df = df.drop_duplicates(subset=['place_id'], keep='first')
+        
+        if remove_without_phone and 'formatted_phone_number' in df.columns:
+            phone_col = df['formatted_phone_number'].astype(str).str.strip()
+            df = df[phone_col.notna() & (phone_col != '') & (phone_col != 'nan')]
+        
+        # Create Excel in memory
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, sheet_name='places_data')
+        output.seek(0)
+        
+        return {
+            "status": "success",
+            "rows": len(df),
+            "file": output.getvalue().hex()  # Return as hex for JSON compatibility
+        }
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -8,7 +8,7 @@ source.include_exts = py,png,jpg,kv,atlas
 
 version = 1.0
 
-requirements = python3,kivy,requests,pandas,openpyxl,jnius
+requirements = python3,kivy,requests,pyjnius
 
 orientation = portrait
 fullscreen = 0
